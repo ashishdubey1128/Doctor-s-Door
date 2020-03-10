@@ -3,48 +3,30 @@
 <head>
 	<title>Doctor page</title>
 	<link rel="stylesheet" type="text/css" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
-	<script type="text/javascript">
-		function a() {
-			var z = document.querySelector('#b');
-			z.style.background= "pink";
-		}
-		function c() {
-			var z = document.querySelector('#b');
-			z.style.background= "#e6eaef";
-		}
-		function b() {
-			var z = document.querySelector('#z');
-			z.style.background= "#2bf23f";
-		}
-		function d() {
-			var z = document.querySelector('#z');
-			z.style.background= "#8db600";
-		}
-	</script>
 
 </head>
-<body style="background-image: url(https://images.unsplash.com/photo-1521453510357-5c7a77db7074?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=975&q=80);background-size: cover;">
-	<div class="container">
-		<div class="jumbotron" onmouseover="a()" onmouseout="c()" id="b">
+<body style="background-image: url(https://images.unsplash.com/photo-1521453510357-5c7a77db7074?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=975&q=80);background-size: cover;background-repeat: no-repeat;">
+	<div class="container" style="text-align: center;">
+		<div class="jumbotron">
 			<h1>Welcome to the Doctor's Door</h1>	
 		</div>
-		<div style="color: black; font-weight: bold;font-family: bahnschrift;text-align: center;" onmouseover="b()" onmouseout="d()">
+		<div style="color: black; font-weight: bold;font-family: bahnschrift;text-align: center;">
 			<h3>Your Health details are </h3>
 		</div>
-			<table class="table table-hover" id="z" style="width: 50%;font-weight: 700;background-color: #8db600;margin-top: 15%;margin-left: 25%;">
+		<div>
+			<table class="table table-hover"  style="background-color:rgba(0,0,0,0.5); width: 70%;font-weight: 700;margin-top: 10%;color: white;margin-right: auto;margin-left: auto;">
+				<th style="border-right:1px solid black;">PROBABLE DISEASES</th><th>SUGGESTED SPECIALISATION</th>
 			<tr>
-				<td>PROBABLE DISEASES</td>
-				<td><%=diseases%></td>
+				<td style="border-right:1px solid black;"><%diseases.forEach(function(d){%><li><%=d.Issue.Name%></li><%});%></td>
+				<td><%diseases.forEach(function(d){%><li><%=d.Specialisation[0].Name%></li><%});%></td>
 			</tr>
 			<tr>
-				<td>SUGGESTED SPECIALISATION</td>
-				<td><%=doctype%></td>
-			</tr>
-			<tr>
-				<td>DOCTORS ADDRESS</td>
-				<td><%= add %></td>
+				<td>HOSPITALS NEAR YOU</td>
+				<td><%for(var i=0;i<5;i++){var s = det[i].Location_Coordinates.split(","); var la = s[0]; var lo = s[1].slice(1);var map = "https://www.google.co.in/maps/@"+la+","+lo+",17z?hl=en"%><a href="/hosp/<%=det[i].id%>/<%=la%>/<%=lo%>" style="color: white;"><ul><li><%=det[i].Hospital_Name%></li></ul></a><%}%></td>
 			</tr>
 			</table>
+		</div>
+			<a href="/userpage" class="btn btn-me btn-danger">Back</a>
 	</div>
 </body>
 </html>

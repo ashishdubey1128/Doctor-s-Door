@@ -1,15 +1,217 @@
 var express = require("express");
-var bodyParser = require("body-parser");
-var request = require("request");
-var readline = require("readline");
+
 var app = express();
-app.use(bodyParser.urlencoded({
-    extended: true
+
+var bodyParser = require("body-parser");
+
+var request = require("request");
+
+var mongoose = require("mongoose");
+
+mongoose.connect("mongodb://localhost/doctors_door");
+
+var passport = require("passport");
+
+var localStrategy = require("passport-local");
+
+// var passportLocalMongoose = require("passport-local-mongoose");
+
+var User = require("./models/patient");
+var Symptom = require("./models/symptoms");
+var Patientdet = require("./models/patdet");
+var Patientloc = require("./models/patloc");
+var Doctor = require("./models/doctor");
+var Doctors = require("./models/doctors");
+var Appointment = require("./models/appointment");
+
+app.use(require("express-session")({
+	secret:"ASHISH is the best",
+	resave:false,
+	saveUninitialized:false
 }));
-app.get("/",function(req,res){
-res.render("home.ejs");
+
+app.use( express.static( "public" ) );
+
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(new localStrategy(User.authenticate()));
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
+
+
+
+app.use(bodyParser.urlencoded({extended:true}));
+
+//Date
+var today = new Date();
+var dd = today.getDate();
+var mm = today.getMonth() + 1; //January is 0!
+
+var yyyy = today.getFullYear();
+if (dd < 10) {
+  dd = '0' + dd;
+} 
+if (mm < 10) {
+  mm = '0' + mm;
+} 
+var today = dd + '/' + mm + '/' + yyyy;
+var dt = today.toString();
+
+
+
+
+app.get("/",function (req,res) {
+	
+	res.render("homepage.ejs");
 });
-app.post("/doctor",function(req,res){
+
+
+app.get("/userpage",isLoggedIn,function(req,res)
+{
+	var x = req.user._id;
+	x.toString();
+	Symptom.find({userid:x},function(err,query)
+		{
+			if (err) {
+				console.log(err);
+			}
+			Patientdet.find({userid:x},function(errr,det)
+			{
+				if(errr)
+				{
+					console.log(errr);
+				}
+				else
+				{
+					Appointment.find({uid:req.user._id},function(err,usr){
+						if(err)
+						{
+							console.log(err);
+						}
+						else
+						{
+							res.render("userpage.ejs",{id:req.user._id,query:query,age:det,usr:usr});
+						}
+					});
+				}
+			});
+		});
+});
+
+//=============
+//AUTH ROUTES
+//=============
+
+app.get("/signup",function (req,res) {
+	
+	res.render("signup.ejs");
+});
+
+app.post("/signup",function (req,res) {
+	var newuser = new User({username:req.body.username});
+	User.register(newuser,req.body.password , function (err,user) {
+		if(err)
+		{
+			console.log(err);
+			return res.render("signup.ejs");
+		}
+		passport.authenticate('local')(req,res,function(){
+			res.redirect("/userpage");
+		
+		//================
+		//location capture
+		//================
+	Patientdet.create({
+		userid:req.user._id,
+		name:req.body.names,
+		state:req.body.state,
+		pin:req.body.pin,
+		dob:req.body.dob,
+		dist:req.body.dist
+	},function(err,user){
+		if(err)
+		{
+			console.log(err);
+		}
+	});
+	});
+	});
+});
+//===============
+//LOGIN
+//===============
+
+
+app.get("/login",function (req,res) {
+	res.render("login.ejs");
+});
+
+app.post("/login", passport.authenticate("local",{
+	successRedirect:"/userpage",
+	failureRedirect:"/login"
+}),function (req,res) {
+});
+
+//========
+//logout
+//========
+app.get("/logout",function (req,res) {
+	req.logout();
+	res.redirect("/");
+});
+
+
+
+
+app.get("/:id/removequery",function(req,res)
+{
+	Appointment.findOneAndDelete({uid:req.params.id},function(err,query)
+	{
+		if(err)
+		{
+			console.log(err);
+		}
+		res.redirect("/userpage");
+
+	});
+});
+
+
+
+
+var sid;
+
+app.post("/doctor/:id",function(req,res){
+Patientloc.create({
+		userid:req.user._id,
+		lat:req.body.lat,
+		lon:req.body.lon
+	},function(err,loc){
+		if(err)
+		{
+			console.log(err);
+		}
+	});
+if(req.body.symp!="")
+	{
+	Symptom.create({
+		userid:req.params.id,
+		symptom:req.body.symp,
+		date:dt
+	},function(err,query){
+		if(err){
+		console.log(err);
+	}
+	sid = query._id;
+	console.log(sid);
+	});
+}
+else
+{
+	res.redirect("/userpage");
+}
+
+
 var y = req.body.symp;
 var yob = req.body.age;
 var sex = req.body.sex;
@@ -17,7 +219,8 @@ console.log(y);
 console.log(yob);
 console.log(sex);
 var id;
-request('https://sandbox-healthservice.priaid.ch/symptoms?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImFzaGlzaGR1YmV5MTEyOEBnbWFpbC5jb20iLCJyb2xlIjoiVXNlciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3NpZCI6IjQxODUiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3ZlcnNpb24iOiIyMDAiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL2xpbWl0IjoiOTk5OTk5OTk5IiwiaHR0cDovL2V4YW1wbGUub3JnL2NsYWltcy9tZW1iZXJzaGlwIjoiUHJlbWl1bSIsImh0dHA6Ly9leGFtcGxlLm9yZy9jbGFpbXMvbGFuZ3VhZ2UiOiJlbi1nYiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvZXhwaXJhdGlvbiI6IjIwOTktMTItMzEiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL21lbWJlcnNoaXBzdGFydCI6IjIwMTgtMTEtMDMiLCJpc3MiOiJodHRwczovL3NhbmRib3gtYXV0aHNlcnZpY2UucHJpYWlkLmNoIiwiYXVkIjoiaHR0cHM6Ly9oZWFsdGhzZXJ2aWNlLnByaWFpZC5jaCIsImV4cCI6MTU0NDk1MzkwOCwibmJmIjoxNTQ0OTQ2NzA4fQ.ybtKJtjmQ6SML0BiR0uDtN03QJzDZKJJTKP6bTQv5XQ&format=json&language=en-gb', function (error, response, body) {
+var ur = 'https://sandbox-healthservice.priaid.ch/symptoms?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImFzaGlzaGR1YmV5MTEyOEBnbWFpbC5jb20iLCJyb2xlIjoiVXNlciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3NpZCI6IjQxODUiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3ZlcnNpb24iOiIyMDAiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL2xpbWl0IjoiOTk5OTk5OTk5IiwiaHR0cDovL2V4YW1wbGUub3JnL2NsYWltcy9tZW1iZXJzaGlwIjoiUHJlbWl1bSIsImh0dHA6Ly9leGFtcGxlLm9yZy9jbGFpbXMvbGFuZ3VhZ2UiOiJlbi1nYiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvZXhwaXJhdGlvbiI6IjIwOTktMTItMzEiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL21lbWJlcnNoaXBzdGFydCI6IjIwMTgtMTEtMDMiLCJpc3MiOiJodHRwczovL3NhbmRib3gtYXV0aHNlcnZpY2UucHJpYWlkLmNoIiwiYXVkIjoiaHR0cHM6Ly9oZWFsdGhzZXJ2aWNlLnByaWFpZC5jaCIsImV4cCI6MTU3NTk2MDUyMSwibmJmIjoxNTc1OTUzMzIxfQ.STRq_gm273YEzgF6hGczz2rF8sSM2-t-R4iarv9nNw0&format=json&language=en-gb';
+request(ur, function (error, response, body) {
 	if(!error && response.statusCode==200)
 	{		
 		var parseddata =JSON.parse(body);
@@ -35,178 +238,229 @@ request('https://sandbox-healthservice.priaid.ch/symptoms?token=eyJ0eXAiOiJKV1Qi
 		console.log(id);
 		var id1=String(id);
 
-		var url="https://sandbox-healthservice.priaid.ch/diagnosis?symptoms=["+id1+"]&gender="+sex+"&year_of_birth="+yob+"&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImFzaGlzaGR1YmV5MTEyOEBnbWFpbC5jb20iLCJyb2xlIjoiVXNlciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3NpZCI6IjQxODUiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3ZlcnNpb24iOiIyMDAiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL2xpbWl0IjoiOTk5OTk5OTk5IiwiaHR0cDovL2V4YW1wbGUub3JnL2NsYWltcy9tZW1iZXJzaGlwIjoiUHJlbWl1bSIsImh0dHA6Ly9leGFtcGxlLm9yZy9jbGFpbXMvbGFuZ3VhZ2UiOiJlbi1nYiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvZXhwaXJhdGlvbiI6IjIwOTktMTItMzEiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL21lbWJlcnNoaXBzdGFydCI6IjIwMTgtMTEtMDMiLCJpc3MiOiJodHRwczovL3NhbmRib3gtYXV0aHNlcnZpY2UucHJpYWlkLmNoIiwiYXVkIjoiaHR0cHM6Ly9oZWFsdGhzZXJ2aWNlLnByaWFpZC5jaCIsImV4cCI6MTU0NDk1Mzk1NCwibmJmIjoxNTQ0OTQ2NzU0fQ.QiyYLwdBzbjp8LtDCUgem7-a1JsKgN1TlP-Oj_i1kKk&format=json&language=en-gb";
+		var url="https://sandbox-healthservice.priaid.ch/diagnosis?symptoms=["+id1+"]&gender="+sex+"&year_of_birth="+yob+"&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImFzaGlzaGR1YmV5MTEyOEBnbWFpbC5jb20iLCJyb2xlIjoiVXNlciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3NpZCI6IjQxODUiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3ZlcnNpb24iOiIyMDAiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL2xpbWl0IjoiOTk5OTk5OTk5IiwiaHR0cDovL2V4YW1wbGUub3JnL2NsYWltcy9tZW1iZXJzaGlwIjoiUHJlbWl1bSIsImh0dHA6Ly9leGFtcGxlLm9yZy9jbGFpbXMvbGFuZ3VhZ2UiOiJlbi1nYiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvZXhwaXJhdGlvbiI6IjIwOTktMTItMzEiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL21lbWJlcnNoaXBzdGFydCI6IjIwMTgtMTEtMDMiLCJpc3MiOiJodHRwczovL3NhbmRib3gtYXV0aHNlcnZpY2UucHJpYWlkLmNoIiwiYXVkIjoiaHR0cHM6Ly9oZWFsdGhzZXJ2aWNlLnByaWFpZC5jaCIsImV4cCI6MTU3NTk2MDY1MSwibmJmIjoxNTc1OTUzNDUxfQ.YNmxXWIKDIvtmQdU68oxkXfHRnAxd1JLX9tz-U5zX3Q&format=json&language=en-gb";
 		request(url, function (error, response, body) {
 			var parsedsymptoms = JSON.parse(body);
 			//console.log(parsedsymptoms[0].Issue.Name);
 			var sname = parsedsymptoms[0].Specialisation[0].Name;
-			var url = "https://api.betterdoctor.com/2016-03-01/doctors?query="+y+"&location=37.773%2C-122.413%2C1000&user_location=37.773%2C-122.413&skip=0&limit=20&user_key=1a11f80f6c067202af0e8481625be2d9"
-			request(url,function(error,response,body){
-			if(!error && response.statusCode==200)
-					{		
-						var parseddata =JSON.parse(body);
-						for(var i=0;i<10;i++)
-						{
-							var x = parseddata.data[i].practices[0].name;
-							var z = parseddata.data[i].specialties[0].uid;
-							var k = [];
-							parsedsymptoms.forEach(function(symptom){
-								k.push(symptom.Issue.Name);
-							});
-							res.render("home1.ejs",{diseases:k,doctype:z,add:x});
-						}
+			console.log(sname);
+			//var url = "https://api.betterdoctor.com/2016-03-01/doctors?query="+y+"&location=37.773%2C-122.413%2C1000&user_location=37.773%2C-122.413&skip=0&limit=10&user_key=1a11f80f6c067202af0e8481625be2d9";
+			//request(url,function(error,response,body){
+			//if(!error && response.statusCode==200)
+			//{		
+				Patientdet.findOne({userid:req.params.id},function(err,pat){
+					if(err)
+					{
+						console.log(err);
 					}
+					else{
+						Doctor.find({District:pat.dist},function(er,pati){
+						if(er)
+						{
+							console.log(er);
+						}
+						else
+						{		
+							//var parseddata =JSON.parse(body);
+							//var x = parseddata.data[0].practices[0].name;
+							//var z = parseddata.data[0].specialties[0].uid;
+							//var lat = parseddata.data[0].practices[0].lat;
+							//var lon = parseddata.data[0].practices[0].lon;
+							//var map = "https://www.google.co.in/maps/@"+lat+","+lon+",17z?hl=en"
+							Symptom.findOneAndUpdate({_id:sid},{$set:{specialisation:sname}},function(err,sym)
+							{
+								if(err)
+								{
+									console.log(err);
+								}
+								else
+								{
+									var k = [];
+									parsedsymptoms.forEach(function(symptom){
+									k.push(symptom.Issue.Name);
+									});
+									res.render("home1.ejs",{diseases:parsedsymptoms,det:pati});
+								}
+							});
+							
+							
+						}
+					});			
+				}
 			});
-			
 	});
+
 }
 else
 {
-console.log("efre");
+console.log("Token Expired!!");
 }
 
 });
 });
 
 
-
-
-
-
-
-
-
-/*
-//var api_key = '1a11f80f6c067202af0e8481625be2d9';
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
+app.get("/map/:la/:lo",function(req,res)
+{
+	res.render("gmaps.ejs",{lat:req.params.la,lon:req.params.lo})
 });
 
-rl.question('Enter the Symptoms', (answer) => {
+
+//Hospital appointment
+
+app.get("/hosp/:id/:la/:lo",function(req,res)
 {
-request('https://sandbox-healthservice.priaid.ch/symptoms?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImFzaGlzaGR1YmV5MTEyOEBnbWFpbC5jb20iLCJyb2xlIjoiVXNlciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3NpZCI6IjQxODUiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3ZlcnNpb24iOiIyMDAiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL2xpbWl0IjoiOTk5OTk5OTk5IiwiaHR0cDovL2V4YW1wbGUub3JnL2NsYWltcy9tZW1iZXJzaGlwIjoiUHJlbWl1bSIsImh0dHA6Ly9leGFtcGxlLm9yZy9jbGFpbXMvbGFuZ3VhZ2UiOiJlbi1nYiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvZXhwaXJhdGlvbiI6IjIwOTktMTItMzEiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL21lbWJlcnNoaXBzdGFydCI6IjIwMTgtMTEtMDMiLCJpc3MiOiJodHRwczovL3NhbmRib3gtYXV0aHNlcnZpY2UucHJpYWlkLmNoIiwiYXVkIjoiaHR0cHM6Ly9oZWFsdGhzZXJ2aWNlLnByaWFpZC5jaCIsImV4cCI6MTU0MTMxMDIyNywibmJmIjoxNTQxMzAzMDI3fQ.xEYdT7xyN7ZRkd7e8ZwByW0IgA-c8y1QhMeAbwC4SZk&format=json&language=en-gb', function (error, response, body) {
-	if(!error && response.statusCode==200)
-	{		
-		var parseddata =JSON.parse(body);
-		for(var i=0;i<50;i++)
+	Doctor.findOne({_id:req.params.id},function(err,hos)
+	{
+		if(err)
 		{
-			if(parseddata[i].Name===answer)
+			console.log(err);
+			res.redirect("/userpage");
+		}
+		else
+		{
+			Symptom.findOne({_id:sid},function(err,symp)
 			{
-				var id = parseddata[i].ID;
-			}
-		
-			/*if(parseddata.data[i].specialties[0].uid=='cardiologist')
-			{
-				console.log(parseddata.data[i].practices[i].name);
-			}*/
-		/*}
-		console.log(id);
-		var id1=String(id);
-
-		var url="https://sandbox-healthservice.priaid.ch/diagnosis?symptoms=["+id1+"]&gender=male&year_of_birth=1998&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImFzaGlzaGR1YmV5MTEyOEBnbWFpbC5jb20iLCJyb2xlIjoiVXNlciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3NpZCI6IjQxODUiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3ZlcnNpb24iOiIyMDAiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL2xpbWl0IjoiOTk5OTk5OTk5IiwiaHR0cDovL2V4YW1wbGUub3JnL2NsYWltcy9tZW1iZXJzaGlwIjoiUHJlbWl1bSIsImh0dHA6Ly9leGFtcGxlLm9yZy9jbGFpbXMvbGFuZ3VhZ2UiOiJlbi1nYiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvZXhwaXJhdGlvbiI6IjIwOTktMTItMzEiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL21lbWJlcnNoaXBzdGFydCI6IjIwMTgtMTEtMDMiLCJpc3MiOiJodHRwczovL3NhbmRib3gtYXV0aHNlcnZpY2UucHJpYWlkLmNoIiwiYXVkIjoiaHR0cHM6Ly9oZWFsdGhzZXJ2aWNlLnByaWFpZC5jaCIsImV4cCI6MTU0MTMxMDI5MCwibmJmIjoxNTQxMzAzMDkwfQ.HOiSTrsPSDpN_X6bfEWeyUXOvGi_72DuEJcVPlG5M2s&format=json&language=en-gb";
-		request(url, function (error, response, body) {
-			var parsedsymptoms = JSON.parse(body);
-			parsedsymptoms.forEach(function(symptom){
-console.log(symptom.Issue.Name);
+				if(err)
+				{
+					console.log(err);
+					res.redirect("/hosp/"+req.params.id);
+				}
+				else
+				{
+					var spe = symp.specialisation.slice(0,5);
+					Doctors.find({Specialty:{$regex: spe , $options: 'i'}},function(err,doc)
+					{
+						if (err) {console.log(err);}
+						else
+						{
+							res.render("appoint.ejs",{hos:hos,symp:symp,doc:doc,la:req.params.la,lo:req.params.lo});
+						}
+					});
+				}
+			});
+		}
+	});
+	
 });
-			//console.log(parsedsymptoms[0].Issue.Name);
-			var sname = parsedsymptoms[0].Specialisation[0].Name;
 
-			if(sname==="General practice")
-			{
-				request('https://api.betterdoctor.com/2016-03-01/doctors?location=37.773,-122.413,100&skip=2&limit=10&user_key=1a11f80f6c067202af0e8481625be2d9', function (error, response, body) {
-					if(!error && response.statusCode==200)
-					{		
-						var parseddata =JSON.parse(body);
-						for(var i=0;i<10;i++)
-						{
-							if(parseddata.data[i].specialties[0].uid==="general-surgeon");
-							{
-								var x = parseddata.data[i].practices[0].name;
-							}
-		
-						}
-						console.log("You need to refer a General-Surgeon");
-						console.log("Suggested health centre :");
-						console.log(x);
-					}	
-				});
-			}
-			else if(sname==="Gastroenterology")
-			{
-				request('https://api.betterdoctor.com/2016-03-01/doctors?location=37.773,-122.413,100&skip=2&limit=10&user_key=1a11f80f6c067202af0e8481625be2d9', function (error, response, body) {
-					if(!error && response.statusCode==200)
-					{		
-						var parseddata =JSON.parse(body);
-						for(var i=0;i<10;i++)
-						{
-							if(parseddata.data[i].specialties[0].uid==="gastroenterologist");
-							{
-								var x = parseddata.data[i].practices[0].name;
-							}
-		
-						}
-						console.log("You need to refer a Gastroenterologist");
-						console.log("Suggested health centre :");
-						console.log(x);
-					}	
-				});
-			}
-			else if(sname==="Cardiology")
-			{
-				request('https://api.betterdoctor.com/2016-03-01/doctors?location=37.773,-122.413,100&skip=2&limit=10&user_key=1a11f80f6c067202af0e8481625be2d9', function (error, response, body) {
-					if(!error && response.statusCode==200)
-					{		
-						var parseddata =JSON.parse(body);
-						for(var i=0;i<10;i++)
-						{
-							if(parseddata.data[i].specialties[0].uid==="cardiologist");
-							{
-								var x = parseddata.data[i].practices[0].name;
-							}
-		
-						}
-						console.log("You need to refer a Cardiologist");
-						console.log("Suggested health centre :");
-						console.log(x);
-					}	
-				});
-			}
-			else if(sname==="Internal medicine")
-			{
-				request('https://api.betterdoctor.com/2016-03-01/doctors?location=37.773,-122.413,100&skip=2&limit=10&user_key=1a11f80f6c067202af0e8481625be2d9', function (error, response, body) {
-					if(!error && response.statusCode==200)
-					{		
-						var parseddata =JSON.parse(body);
-						for(var i=0;i<10;i++)
-						{
-							if(parseddata.data[i].specialties[0].uid==="internist");
-							{
-								var x = parseddata.data[i].practices[0].name;
-							}
-		
-						}
-						console.log("You need to refer a Internist");
-						console.log("Suggested health centre :");
-						console.log(x);
-					}	
-				});
-			}	
-		});
-	}
-else
+
+
+app.post("/appoint/:id",function(req,res)
 {
-console.log("efre");
-}
-
+	Appointment.findOne({uid:req.user._id,hid:req.params.id,did:req.body.docid,date:req.body.date},function(err,usr)
+	{
+		if(usr)
+		{
+			res.render("failure.ejs",{msg:"Appointment already Booked",id:req.params.id})
+		}
+		else
+		{
+			Appointment.findOne({did:req.body.docid,date:req.body.date},function(err,details)
+	{
+		if(details)
+		{
+			console.log(details.count);
+			if(details.count>0)
+			{
+				var c = details.count-1;
+				Doctor.findOne({_id:req.params.id},function(err,usr1){
+								if(err)
+								{
+									console.log(err);
+								}
+								else
+								{
+									console.log(usr1.Hospital_Name);
+									Doctors.findOne({_id:req.body.docid},function(err,usr2)
+									{
+										if(err)
+										{
+											console.log(err);
+										}
+										Appointment.create({
+											uid:req.user._id,
+											did:req.body.docid,
+											dname:usr2.Name,
+											hid:req.params.id,
+											hname:usr1.Hospital_Name,
+											date:req.body.date,
+											time:req.body.time,
+											count:c
+										},function(err,query){
+										if(err){
+										console.log(err);
+										}
+										else
+										{
+											res.render("success.ejs");
+											console.log(query);
+										}
+									});
+									});
+								}
+							});
+		}
+		else
+		{
+			res.render("failure.ejs",{msg:"Doctor busy on given date. Choose other date",id:req.params.id});
+		}
+	}
+	else
+	{
+		Doctor.findOne({_id:req.params.id},function(err,usr1){
+								if(err)
+								{
+									console.log(err);
+								}
+								else
+								{
+									console.log(usr1.Hospital_Name);
+									Doctors.findOne({_id:req.body.docid},function(err,usr2)
+									{
+										if(err)
+										{
+											console.log(err);
+										}
+										Appointment.create({
+											uid:req.user._id,
+											did:req.body.docid,
+											dname:usr2.Name,
+											hid:req.params.id,
+											hname:usr1.Hospital_Name,
+											date:req.body.date,
+											time:req.body.time,
+											count:9
+										},function(err,query){
+										if(err){
+										console.log(err);
+										}
+										else
+										{
+											res.render("success.ejs");
+											console.log(query);
+										}
+									});
+									});
+								}
+							});
+	}
+	});
+		}
+	});
 });
+
+
+
+
+
+function isLoggedIn(req,res,next) {
+	if(req.isAuthenticated())
+	{
+		return next();
+	}
+	res.redirect("/login");
 }
-rl.close();
-});
-
-*/
-
 
 
 
