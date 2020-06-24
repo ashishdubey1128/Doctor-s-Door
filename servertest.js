@@ -231,36 +231,7 @@ var sex = req.body.sex;
 console.log(y);
 console.log(yob);
 console.log(sex);
-var id;
-// var ur = 'https://sandbox-healthservice.priaid.ch/symptoms?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImFzaGlzaGR1YmV5MTEyOEBnbWFpbC5jb20iLCJyb2xlIjoiVXNlciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3NpZCI6IjQxODUiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3ZlcnNpb24iOiIyMDAiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL2xpbWl0IjoiOTk5OTk5OTk5IiwiaHR0cDovL2V4YW1wbGUub3JnL2NsYWltcy9tZW1iZXJzaGlwIjoiUHJlbWl1bSIsImh0dHA6Ly9leGFtcGxlLm9yZy9jbGFpbXMvbGFuZ3VhZ2UiOiJlbi1nYiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvZXhwaXJhdGlvbiI6IjIwOTktMTItMzEiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL21lbWJlcnNoaXBzdGFydCI6IjIwMTgtMTEtMDMiLCJpc3MiOiJodHRwczovL3NhbmRib3gtYXV0aHNlcnZpY2UucHJpYWlkLmNoIiwiYXVkIjoiaHR0cHM6Ly9oZWFsdGhzZXJ2aWNlLnByaWFpZC5jaCIsImV4cCI6MTU4OTkyNjI0OCwibmJmIjoxNTg5OTE5MDQ4fQ.-ldtq5CC_F0tfcS-s1c3HNv8uhLQcWbLkeR_NtPoeko&format=json&language=en-gb';
-// request(ur, function (error, response, body) {
-// 	if(!error && response.statusCode==200)
-// 	{		
-// 		var parseddata =JSON.parse(body);
-// 		parseddata.forEach(function(x){
-// 			if(x.Name===y)
-// 			{
-// 				id = x.ID;
-// 			}
-		
-// 			/*if(parseddata.data[i].specialties[0].uid=='cardiologist')
-// 			{
-// 				console.log(parseddata.data[i].practices[i].name);
-// 			}*/
-// 		});
-// 		console.log(id);
-// 		var id1=String(id);
-
-// 		var url="https://sandbox-healthservice.priaid.ch/diagnosis?symptoms=["+id1+"]&gender="+sex+"&year_of_birth="+yob+"&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImFzaGlzaGR1YmV5MTEyOEBnbWFpbC5jb20iLCJyb2xlIjoiVXNlciIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3NpZCI6IjQxODUiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3ZlcnNpb24iOiIyMDAiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL2xpbWl0IjoiOTk5OTk5OTk5IiwiaHR0cDovL2V4YW1wbGUub3JnL2NsYWltcy9tZW1iZXJzaGlwIjoiUHJlbWl1bSIsImh0dHA6Ly9leGFtcGxlLm9yZy9jbGFpbXMvbGFuZ3VhZ2UiOiJlbi1nYiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvZXhwaXJhdGlvbiI6IjIwOTktMTItMzEiLCJodHRwOi8vZXhhbXBsZS5vcmcvY2xhaW1zL21lbWJlcnNoaXBzdGFydCI6IjIwMTgtMTEtMDMiLCJpc3MiOiJodHRwczovL3NhbmRib3gtYXV0aHNlcnZpY2UucHJpYWlkLmNoIiwiYXVkIjoiaHR0cHM6Ly9oZWFsdGhzZXJ2aWNlLnByaWFpZC5jaCIsImV4cCI6MTU4OTkyNjMzNSwibmJmIjoxNTg5OTE5MTM1fQ.6bc6gV9gapL6JzW-2qM5l4MKMIH1kQj_kz9jE1Cc2L8&format=json&language=en-gb";
-// 		request(url, function (error, response, body) {
-// 			var parsedsymptoms = JSON.parse(body);
-// 			//console.log(parsedsymptoms[0].Issue.Name);
-// 			var sname = parsedsymptoms[0].Specialisation[0].Name;
-// 			console.log(sname);
-// 			//var url = "https://api.betterdoctor.com/2016-03-01/doctors?query="+y+"&location=37.773%2C-122.413%2C1000&user_location=37.773%2C-122.413&skip=0&limit=10&user_key=1a11f80f6c067202af0e8481625be2d9";
-// 			//request(url,function(error,response,body){
-// 			//if(!error && response.statusCode==200)
-// 			//{		
+var id;	
 
 			Predict.findOne({symptom:y},function(er,parsedsymptoms)
 			{
@@ -312,13 +283,7 @@ var id;
 			});
 	});
 });
-// else
-// {
-// console.log("Token Expired!!");
-// }
 
-// });
-// });
 
 
 app.get("/map/:la/:lo",function(req,res)
